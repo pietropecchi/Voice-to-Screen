@@ -1,0 +1,7 @@
+
+sounddevice
+vosk
+deep_translator
+nltk
+tqdm
+requests
