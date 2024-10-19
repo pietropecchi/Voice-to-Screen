@@ -32,7 +32,7 @@ This project provides a real-time transcription and translation tool using **Vos
     - [French Model](https://alphacephei.com/vosk/models/vosk-model-small-fr-0.22.zip)
     - [Japanese Model](https://alphacephei.com/vosk/models/vosk-model-small-ja-0.22.zip)
 
-## Virtual Microphone Setup (Linux, Windows, macOS)
+## optional - Virtual Microphone Setup (Linux, Windows, macOS)
 
 If you want to transcribe and translate system audio (instead of using a physical microphone), you can set up a virtual microphone.
 
