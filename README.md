@@ -1,3 +1,4 @@
+
 # Voice-to-Screen: Real-Time Transcription and Translation
 
 This project provides a real-time transcription and translation tool using **Vosk** for speech recognition and **GoogleTranslator** for translation. It features a graphical user interface (GUI) that displays both the transcription and translation in real-time, supporting multiple languages.
@@ -31,6 +32,35 @@ This project provides a real-time transcription and translation tool using **Vos
     - [French Model](https://alphacephei.com/vosk/models/vosk-model-small-fr-0.22.zip)
     - [Japanese Model](https://alphacephei.com/vosk/models/vosk-model-small-ja-0.22.zip)
 
+## Virtual Microphone Setup (Linux, Windows, macOS)
+
+If you want to transcribe and translate system audio (instead of using a physical microphone), you can set up a virtual microphone.
+
+### Linux (PulseAudio)
+
+For Linux users with PulseAudio, you can set up a virtual microphone by running the following command:
+
+```bash
+pactl load-module module-remap-source source_name=VirtualMic master=VirtualSink.monitor
+```
+
+This command creates a virtual microphone that listens to system audio without the need for physical speakers or a microphone. You can then select `VirtualMic` as your input device when running the program.
+
+### Windows
+
+For Windows users, you can achieve a similar setup using virtual audio tools like **VB-Audio Virtual Cable**. Install the software and set it up as your input device to allow transcription of system audio.
+
+- Download and set up: [VB-Audio Virtual Cable](https://www.vb-audio.com/Cable/)
+
+### macOS
+
+On macOS, you can use **Loopback** or **Soundflower** to create a virtual audio device. These tools allow you to capture system audio and feed it into the transcription program.
+
+- [Loopback](https://rogueamoeba.com/loopback/) (paid)
+- [Soundflower](https://github.com/mattingalls/Soundflower) (free)
+
+Once set up, select the virtual audio device as your input device in the program.
+
 ## Usage
 
 1. Run the application:
@@ -39,7 +69,7 @@ This project provides a real-time transcription and translation tool using **Vos
     ```
 
 2. Select the source and target languages for transcription and translation.
-3. Select the audio input device for recording (e.g., microphone).
+3. Select the audio input device for recording (e.g., microphone or virtual microphone).
 4. The application will display real-time transcription and translation in the GUI.
 
 ## File Descriptions
