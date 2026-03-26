@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QPoint, Qt
+from PySide6.QtCore import QPoint, QTimer, Qt
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -30,6 +30,9 @@ class OverlayWindow(QWidget):
         self._pipeline = PipelineClient(self)
         self._devices: list[InputDevice] = []
         self._audio_level = 0.0
+        self._always_on_top_timer = QTimer(self)
+        self._always_on_top_timer.setInterval(1500)
+        self._always_on_top_timer.timeout.connect(self._reassert_on_top)
 
         self._build_window()
         self._build_ui()
@@ -40,11 +43,14 @@ class OverlayWindow(QWidget):
         self.setWindowTitle("Voice-to-Screen")
         self.setMinimumSize(760, 440)
         self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint
+            Qt.WindowType.Window
+            | Qt.WindowType.CustomizeWindowHint
+            | Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
         self.setWindowOpacity(self._config.overlay_opacity)
 
     def _build_ui(self) -> None:
@@ -166,7 +172,13 @@ class OverlayWindow(QWidget):
             self._drag_origin = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
         super().mousePressEvent(event)
 
+    def showEvent(self, event) -> None:  # type: ignore[override]
+        self._reassert_on_top()
+        self._always_on_top_timer.start()
+        super().showEvent(event)
+
     def closeEvent(self, event) -> None:  # type: ignore[override]
+        self._always_on_top_timer.stop()
         if self._pipeline.is_running():
             self._pipeline.stop_session()
         super().closeEvent(event)
@@ -279,7 +291,8 @@ class OverlayWindow(QWidget):
             source.setObjectName("sourceText")
             layout.addWidget(source)
 
-        translation = QLabel(caption.translated_text)
+        primary_text = caption.translated_text or caption.source_text
+        translation = QLabel(primary_text)
         translation.setWordWrap(True)
         translation.setObjectName("translationText")
         translation.setFont(QFont("Helvetica Neue", 15, QFont.Weight.Medium))
@@ -290,6 +303,10 @@ class OverlayWindow(QWidget):
         status.setStyleSheet(f"color: {status_color(caption.status).name()};")
         layout.addWidget(status)
         return card
+
+    def _reassert_on_top(self) -> None:
+        self.raise_()
+        self.activateWindow()
 
 
 def _labeled_widget(label_text: str, widget: QWidget) -> QWidget:

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from pathlib import Path
 
 from .audio.devices import list_input_devices
 from .audio.source import AudioSource, AudioSourceConfig
-from .contracts import SessionConfig
+from .contracts import CaptionSegment, SegmentStatus, SessionConfig
 from .events import PipelineEvent
+from .transcription.vosk_engine import VoskTranscriptionEngine
 
 
 class PipelineOrchestrator:
@@ -41,12 +43,57 @@ class PipelineOrchestrator:
         )
 
         audio_source.start()
-        for level in audio_source.iter_levels():
+        if audio_source.last_error:
+            yield PipelineEvent(
+                event_type="error",
+                payload={
+                    "message": f"Unable to open input device: {audio_source.last_error}",
+                },
+            )
+            yield PipelineEvent(event_type="session_stopped")
+            return
+
+        transcription = VoskTranscriptionEngine(
+            source_language=self.config.source_language,
+            sample_rate=audio_source.active_sample_rate,
+            models_root=self._models_root(),
+        )
+        transcription.start()
+        if transcription.last_error:
+            yield PipelineEvent(
+                event_type="error",
+                payload={"message": transcription.last_error},
+            )
+            audio_source.stop()
+            yield PipelineEvent(event_type="session_stopped")
+            return
+
+        for packet in audio_source.iter_packets():
             yield PipelineEvent(
                 event_type="audio_level",
-                payload={"level": round(level, 4)},
+                payload={"level": round(packet.level, 4)},
             )
-        audio_source.stop()
+            if not packet.pcm_bytes:
+                continue
+
+            update = transcription.process_chunk(packet.pcm_bytes)
+            if update is None:
+                continue
+
+            yield PipelineEvent(
+                event_type="caption_segment",
+                payload=CaptionSegment(
+                    segment_id=update.segment_id,
+                    speaker_label="Speaker 1",
+                    source_text=update.text,
+                    translated_text="",
+                    status=SegmentStatus.FINAL if update.is_final else SegmentStatus.DRAFT,
+                ).to_dict(),
+            )
+
+    @staticmethod
+    def _models_root() -> Path:
+        return Path(__file__).resolve().parents[4] / "models"
 
     def _resolve_selected_device(self) -> dict[str, object] | None:
         if not self.config.input_device_id:
