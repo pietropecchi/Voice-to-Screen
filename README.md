@@ -10,9 +10,19 @@ If you are working on the target architecture described in the product docs, sta
 
 - `docs/v1_spec.md`
 - `docs/module_boundaries.md`
-- `apps/macos/`
+- `apps/desktop/`
 - `services/pipeline/`
 - `shared/schemas/`
+
+## Current App Direction
+
+The main app shell is now Python-first:
+
+- `apps/desktop/` contains the `PySide6` overlay UI
+- `services/pipeline/` contains the local speech pipeline scaffold
+- `shared/schemas/` contains the transport contract
+
+The older `apps/macos/` Swift scaffold remains as a reference only and is no longer the recommended development path.
 
 This project provides a real-time transcription and translation tool using **Vosk** for speech recognition and **GoogleTranslator** for translation. It features a graphical user interface (GUI) that displays both the transcription and translation in real-time, supporting multiple languages.
 

@@ -14,6 +14,7 @@ class SegmentStatus(StrEnum):
 @dataclass(slots=True)
 class SessionConfig:
     source_language: str
+    input_device_id: str = ""
     target_language: str = "en"
     model_tier: str = "balanced"
     compact_mode: bool = False

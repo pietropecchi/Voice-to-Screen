@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from uuid import uuid4
 
+from .audio.devices import list_input_devices
 from .contracts import CaptionSegment, SegmentStatus, SessionConfig
 from .events import PipelineEvent
 
@@ -14,9 +15,13 @@ class PipelineOrchestrator:
         self.config = config
 
     def start(self) -> Iterator[PipelineEvent]:
+        selected_device = self._resolve_selected_device()
         yield PipelineEvent(
             event_type="session_started",
-            payload={"config": self.config.to_dict()},
+            payload={
+                "config": self.config.to_dict(),
+                "selected_input_device": selected_device,
+            },
         )
 
         for segment in self._sample_segments():
@@ -44,3 +49,16 @@ class PipelineOrchestrator:
                 status=SegmentStatus.REVISED,
             ),
         ]
+
+    def _resolve_selected_device(self) -> dict[str, object] | None:
+        if not self.config.input_device_id:
+            return None
+
+        for device in list_input_devices():
+            if device.device_id == self.config.input_device_id:
+                return device.to_dict()
+
+        return {
+            "device_id": self.config.input_device_id,
+            "name": "Unknown device",
+        }
