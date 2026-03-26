@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QProgressBar,
     QScrollArea,
     QSizePolicy,
     QSlider,
@@ -28,6 +29,7 @@ class OverlayWindow(QWidget):
         self._config = SessionConfig()
         self._pipeline = PipelineClient(self)
         self._devices: list[InputDevice] = []
+        self._audio_level = 0.0
 
         self._build_window()
         self._build_ui()
@@ -115,6 +117,18 @@ class OverlayWindow(QWidget):
         self.status_label.setObjectName("statusLabel")
         panel_layout.addWidget(self.status_label)
 
+        meter_row = QHBoxLayout()
+        meter_label = QLabel("Input level")
+        meter_label.setObjectName("fieldLabel")
+        self.audio_meter = QProgressBar()
+        self.audio_meter.setRange(0, 100)
+        self.audio_meter.setValue(0)
+        self.audio_meter.setTextVisible(False)
+        self.audio_meter.setObjectName("audioMeter")
+        meter_row.addWidget(meter_label)
+        meter_row.addWidget(self.audio_meter, 1)
+        panel_layout.addLayout(meter_row)
+
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
@@ -144,6 +158,7 @@ class OverlayWindow(QWidget):
         self._pipeline.session_started.connect(self._handle_session_started)
         self._pipeline.session_stopped.connect(self._handle_session_stopped)
         self._pipeline.captions_updated.connect(self._render_captions)
+        self._pipeline.audio_level_updated.connect(self._handle_audio_level)
         self._pipeline.process_error.connect(self._handle_process_error)
 
     def mousePressEvent(self, event) -> None:  # type: ignore[override]
@@ -193,10 +208,16 @@ class OverlayWindow(QWidget):
     def _handle_session_stopped(self) -> None:
         self.status_label.setText("Idle")
         self.start_button.setText("Start")
+        self.audio_meter.setValue(0)
 
     def _handle_process_error(self, message: str) -> None:
         self.status_label.setText(f"Pipeline error: {message}")
         self.start_button.setText("Start")
+        self.audio_meter.setValue(0)
+
+    def _handle_audio_level(self, level: float) -> None:
+        self._audio_level = level
+        self.audio_meter.setValue(int(level * 100))
 
     def _load_devices(self) -> None:
         try:
@@ -323,6 +344,16 @@ def _stylesheet() -> str:
         font-family: Menlo, monospace;
         font-size: 11px;
         letter-spacing: 1px;
+    }
+    QProgressBar#audioMeter {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        min-height: 12px;
+    }
+    QProgressBar#audioMeter::chunk {
+        background: #e56b3c;
+        border-radius: 7px;
     }
     QPushButton#startButton {
         background: #e56b3c;

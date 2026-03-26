@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from uuid import uuid4
 
 from .audio.devices import list_input_devices
-from .contracts import CaptionSegment, SegmentStatus, SessionConfig
+from .audio.source import AudioSource, AudioSourceConfig
+from .contracts import SessionConfig
 from .events import PipelineEvent
 
 
@@ -24,31 +24,29 @@ class PipelineOrchestrator:
             },
         )
 
-        for segment in self._sample_segments():
+        if selected_device is None:
             yield PipelineEvent(
-                event_type="caption_segment",
-                payload=segment.to_dict(),
+                event_type="error",
+                payload={"message": "No input device selected"},
             )
+            yield PipelineEvent(event_type="session_stopped")
+            return
 
-        yield PipelineEvent(event_type="session_stopped")
+        audio_source = AudioSource(
+            AudioSourceConfig(
+                device_id=str(selected_device["device_id"]),
+                sample_rate=int(selected_device.get("default_samplerate", 16000)),
+                channels=1,
+            )
+        )
 
-    def _sample_segments(self) -> list[CaptionSegment]:
-        return [
-            CaptionSegment(
-                segment_id=str(uuid4()),
-                speaker_label="Speaker 1",
-                source_text="Kore wa mada tesuto no dankai desu.",
-                translated_text="This is still in the testing phase.",
-                status=SegmentStatus.DRAFT,
-            ),
-            CaptionSegment(
-                segment_id=str(uuid4()),
-                speaker_label="Speaker 2",
-                source_text="Demo jikkou wa mou sugu hajimarimasu.",
-                translated_text="But execution will begin very soon.",
-                status=SegmentStatus.REVISED,
-            ),
-        ]
+        audio_source.start()
+        for level in audio_source.iter_levels():
+            yield PipelineEvent(
+                event_type="audio_level",
+                payload={"level": round(level, 4)},
+            )
+        audio_source.stop()
 
     def _resolve_selected_device(self) -> dict[str, object] | None:
         if not self.config.input_device_id:

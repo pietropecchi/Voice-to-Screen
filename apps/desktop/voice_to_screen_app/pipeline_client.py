@@ -13,6 +13,7 @@ from .models import CaptionSegment, InputDevice, SessionConfig
 
 class PipelineClient(QObject):
     captions_updated = Signal(list)
+    audio_level_updated = Signal(float)
     session_started = Signal(dict)
     session_stopped = Signal()
     process_error = Signal(str)
@@ -96,6 +97,14 @@ class PipelineClient(QObject):
             segment = CaptionSegment.from_event_payload(payload)
             self._segments_by_id[segment.segment_id] = segment
             self.captions_updated.emit(list(self._segments_by_id.values()))
+            return
+
+        if event_type == "audio_level":
+            self.audio_level_updated.emit(float(payload.get("level", 0.0)))
+            return
+
+        if event_type == "error":
+            self.process_error.emit(str(payload.get("message", "Unknown pipeline error")))
             return
 
         if event_type == "session_stopped":
