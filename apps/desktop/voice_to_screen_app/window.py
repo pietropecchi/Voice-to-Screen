@@ -166,6 +166,11 @@ class OverlayWindow(QWidget):
             self._drag_origin = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
         super().mousePressEvent(event)
 
+    def closeEvent(self, event) -> None:  # type: ignore[override]
+        if self._pipeline.is_running():
+            self._pipeline.stop_session()
+        super().closeEvent(event)
+
     def mouseMoveEvent(self, event) -> None:  # type: ignore[override]
         if self._drag_origin is not None and event.buttons() & Qt.MouseButton.LeftButton:
             self.move(event.globalPosition().toPoint() - self._drag_origin)

@@ -24,6 +24,14 @@ pip install -r requirements.txt
 python -m voice_to_screen_app.main
 ```
 
+If the app only shows `Mock BlackHole`, the desktop environment is missing the pipeline audio dependencies. Re-run:
+
+```bash
+pip install -r requirements.txt
+```
+
+and then restart the app.
+
 ## Next Steps
 
 1. Replace the stub pipeline with real audio ingestion.

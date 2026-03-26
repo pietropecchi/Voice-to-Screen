@@ -41,8 +41,13 @@ class PipelineClient(QObject):
     def stop_session(self) -> None:
         if self._process.state() == QProcess.ProcessState.NotRunning:
             return
-        self._process.kill()
-        self._process.waitForFinished(1500)
+        self._process.terminate()
+        if not self._process.waitForFinished(1500):
+            self._process.kill()
+            self._process.waitForFinished(1500)
+
+    def is_running(self) -> bool:
+        return self._process.state() != QProcess.ProcessState.NotRunning
 
     def list_devices(self) -> list[InputDevice]:
         env = os.environ.copy()
