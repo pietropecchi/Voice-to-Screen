@@ -17,6 +17,8 @@ class SessionConfig:
     target_language: str = "English"
     model_tier: str = "balanced"
     overlay_opacity: float = 0.84
+    source_font_size: int = 15
+    primary_font_size: int = 22
     compact_mode: bool = False
     speaker_labels_enabled: bool = True
     gender_hints_enabled: bool = False

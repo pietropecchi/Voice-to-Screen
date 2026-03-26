@@ -11,9 +11,9 @@ from PySide6.QtWidgets import (
     QPushButton,
     QProgressBar,
     QScrollArea,
+    QSizeGrip,
     QSizePolicy,
     QSlider,
-    QSpacerItem,
     QVBoxLayout,
     QWidget,
 )
@@ -43,7 +43,8 @@ class OverlayWindow(QWidget):
 
     def _build_window(self) -> None:
         self.setWindowTitle("Voice-to-Screen")
-        self.setMinimumSize(760, 440)
+        self.setMinimumSize(680, 380)
+        self.resize(860, 520)
         self.setWindowFlags(
             Qt.WindowType.Window
             | Qt.WindowType.CustomizeWindowHint
@@ -119,6 +120,19 @@ class OverlayWindow(QWidget):
         row_three.addWidget(self.refresh_devices_button)
         controls_layout.addLayout(row_three)
 
+        row_four = QHBoxLayout()
+        row_four.addWidget(QLabel("Source text"))
+        self.source_font_slider = QSlider(Qt.Orientation.Horizontal)
+        self.source_font_slider.setRange(11, 28)
+        self.source_font_slider.setValue(self._config.source_font_size)
+        row_four.addWidget(self.source_font_slider)
+        row_four.addWidget(QLabel("Primary text"))
+        self.primary_font_slider = QSlider(Qt.Orientation.Horizontal)
+        self.primary_font_slider.setRange(14, 40)
+        self.primary_font_slider.setValue(self._config.primary_font_size)
+        row_four.addWidget(self.primary_font_slider)
+        controls_layout.addLayout(row_four)
+
         panel_layout.addLayout(controls_layout)
 
         self.status_label = QLabel("Idle")
@@ -149,12 +163,24 @@ class OverlayWindow(QWidget):
         self.scroll_area.setWidget(self.feed_widget)
         panel_layout.addWidget(self.scroll_area, 1)
 
+        footer_row = QHBoxLayout()
+        footer_row.addStretch(1)
+        self.resize_hint = QLabel("Resize")
+        self.resize_hint.setObjectName("fieldLabel")
+        footer_row.addWidget(self.resize_hint)
+        self.size_grip = QSizeGrip(self.panel)
+        self.size_grip.setFixedSize(18, 18)
+        footer_row.addWidget(self.size_grip, 0, Qt.AlignmentFlag.AlignBottom)
+        panel_layout.addLayout(footer_row)
+
         root_layout.addWidget(self.panel)
         self.setStyleSheet(_stylesheet())
 
     def _bind_events(self) -> None:
         self.start_button.clicked.connect(self._toggle_session)
         self.opacity_slider.valueChanged.connect(self._set_opacity)
+        self.source_font_slider.valueChanged.connect(self._set_source_font_size)
+        self.primary_font_slider.valueChanged.connect(self._set_primary_font_size)
         self.compact_toggle.toggled.connect(self._update_config)
         self.speakers_toggle.toggled.connect(self._update_config)
         self.gender_toggle.toggled.connect(self._update_config)
@@ -205,6 +231,14 @@ class OverlayWindow(QWidget):
     def _set_opacity(self, value: int) -> None:
         self._config.overlay_opacity = value / 100
         self.setWindowOpacity(self._config.overlay_opacity)
+
+    def _set_source_font_size(self, value: int) -> None:
+        self._config.source_font_size = value
+        self._rerender_existing_cards()
+
+    def _set_primary_font_size(self, value: int) -> None:
+        self._config.primary_font_size = value
+        self._rerender_existing_cards()
 
     def _update_config(self) -> None:
         selected_device = self.device_combo.currentData()
@@ -319,13 +353,18 @@ class OverlayWindow(QWidget):
             source = QLabel(caption.source_text)
             source.setWordWrap(True)
             source.setObjectName("sourceText")
+            source.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+            source.setFont(QFont("Helvetica Neue", self._config.source_font_size, QFont.Weight.Medium))
+            source.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             layout.addWidget(source)
 
         primary_text = caption.translated_text or caption.source_text
         translation = QLabel(primary_text)
         translation.setWordWrap(True)
         translation.setObjectName("translationText")
-        translation.setFont(QFont("Helvetica Neue", 15, QFont.Weight.Medium))
+        translation.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        translation.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        translation.setFont(QFont("Helvetica Neue", self._config.primary_font_size, QFont.Weight.Medium))
         layout.addWidget(translation)
 
         status = QLabel(caption.status.value.upper())
@@ -389,7 +428,6 @@ def _stylesheet() -> str:
         color: rgba(245, 247, 251, 0.85);
     }
     #translationText {
-        font-size: 20px;
         font-weight: 600;
     }
     #statusText {
