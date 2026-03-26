@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SessionConfig",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source_language",
+    "target_language",
+    "model_tier",
+    "compact_mode",
+    "speaker_labels_enabled",
+    "gender_hints_enabled"
+  ],
+  "properties": {
+    "source_language": {
+      "type": "string"
+    },
+    "target_language": {
+      "type": "string"
+    },
+    "model_tier": {
+      "type": "string",
+      "enum": ["fast", "balanced", "accurate"]
+    },
+    "compact_mode": {
+      "type": "boolean"
+    },
+    "speaker_labels_enabled": {
+      "type": "boolean"
+    },
+    "gender_hints_enabled": {
+      "type": "boolean"
+    }
+  }
+}

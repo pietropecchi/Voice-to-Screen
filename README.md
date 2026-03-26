@@ -1,6 +1,19 @@
 
 # Voice-to-Screen: Real-Time Transcription and Translation
 
+This repository now contains two tracks:
+
+- the original flat Python prototype in the repo root
+- a new modular scaffold for the real app under `apps/`, `services/`, and `shared/`
+
+If you are working on the target architecture described in the product docs, start here:
+
+- `docs/v1_spec.md`
+- `docs/module_boundaries.md`
+- `apps/macos/`
+- `services/pipeline/`
+- `shared/schemas/`
+
 This project provides a real-time transcription and translation tool using **Vosk** for speech recognition and **GoogleTranslator** for translation. It features a graphical user interface (GUI) that displays both the transcription and translation in real-time, supporting multiple languages.
 
 ## Features

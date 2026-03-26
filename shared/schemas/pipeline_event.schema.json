@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PipelineEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_type", "payload"],
+  "properties": {
+    "event_type": {
+      "type": "string"
+    },
+    "payload": {
+      "type": "object"
+    }
+  }
+}
