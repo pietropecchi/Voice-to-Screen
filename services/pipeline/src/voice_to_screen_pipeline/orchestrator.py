@@ -37,7 +37,7 @@ class PipelineOrchestrator:
         audio_source = AudioSource(
             AudioSourceConfig(
                 device_id=str(selected_device["device_id"]),
-                sample_rate=int(selected_device.get("default_samplerate", 16000)),
+                sample_rate=16000,
                 channels=1,
             )
         )

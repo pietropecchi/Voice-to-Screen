@@ -39,6 +39,8 @@ class AudioSource:
         self._stream = None
         self.last_error: str | None = None
         self.active_sample_rate = config.sample_rate
+        self._device_sample_rate = config.sample_rate
+        self._device_channels = config.channels
 
     def start(self) -> None:
         """Start ingesting audio from the selected device."""
@@ -57,7 +59,9 @@ class AudioSource:
             input_channels = int(device_info["max_input_channels"])
             channels = max(1, min(self.config.channels, input_channels))
             sample_rate = int(float(device_info.get("default_samplerate", self.config.sample_rate)))
-            self.active_sample_rate = sample_rate
+            self._device_sample_rate = sample_rate
+            self._device_channels = channels
+            self.active_sample_rate = self.config.sample_rate
 
             sd.check_input_settings(
                 device=int(self.config.device_id),
@@ -72,7 +76,7 @@ class AudioSource:
                 channels=channels,
                 callback=self._on_audio,
                 dtype="int16",
-                blocksize=2048,
+                blocksize=1024,
             )
             self._stream.start()
         except Exception as exc:
@@ -104,7 +108,12 @@ class AudioSource:
             return
 
         pcm_bytes = bytes(indata)
-        samples = np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+        raw_samples = np.frombuffer(pcm_bytes, dtype=np.int16)
+        if self._device_channels > 1:
+            raw_samples = raw_samples.reshape(-1, self._device_channels).mean(axis=1).astype(np.int16)
+
+        processed_samples = self._resample_to_target_rate(raw_samples)
+        samples = processed_samples.astype(np.float32) / 32768.0
         if samples.size == 0:
             level = 0.0
         else:
@@ -112,7 +121,7 @@ class AudioSource:
         self._packets.put(
             AudioPacket(
                 level=min(max(level * 8.0, 0.0), 1.0),
-                pcm_bytes=pcm_bytes,
+                pcm_bytes=processed_samples.tobytes(),
             )
         )
 
@@ -123,3 +132,21 @@ class AudioSource:
             level = 0.18 + 0.12 * ((phase % 1.0) * 0.5)
             sleep(0.08)
             yield AudioPacket(level=level, pcm_bytes=b"")
+
+    def _resample_to_target_rate(self, samples: "np.ndarray") -> "np.ndarray":
+        if np is None or samples.size == 0:
+            return samples
+
+        if self._device_sample_rate == self.config.sample_rate:
+            return samples.astype(np.int16, copy=False)
+
+        ratio = self._device_sample_rate / self.config.sample_rate
+        if ratio.is_integer():
+            step = int(ratio)
+            return samples[::step].astype(np.int16, copy=False)
+
+        target_length = max(1, int(len(samples) * self.config.sample_rate / self._device_sample_rate))
+        source_positions = np.arange(len(samples), dtype=np.float32)
+        target_positions = np.linspace(0, max(len(samples) - 1, 0), num=target_length, dtype=np.float32)
+        resampled = np.interp(target_positions, source_positions, samples.astype(np.float32))
+        return np.clip(resampled, -32768, 32767).astype(np.int16)
