@@ -10,11 +10,7 @@ except Exception:  # pragma: no cover
     KaldiRecognizer = None
     Model = None
 
-
-LANGUAGE_MODEL_DIRS = {
-    "english": "vosk-model-en-us",
-    "japanese": "vosk-model-ja",
-}
+from ..models import resolve_model_path
 
 
 @dataclass(slots=True)
@@ -25,8 +21,9 @@ class TranscriptUpdate:
 
 
 class VoskTranscriptionEngine:
-    def __init__(self, source_language: str, sample_rate: int, models_root: Path) -> None:
+    def __init__(self, source_language: str, model_tier: str, sample_rate: int, models_root: Path) -> None:
         self.source_language = source_language
+        self.model_tier = model_tier
         self.sample_rate = sample_rate
         self.models_root = models_root
         self._recognizer: KaldiRecognizer | None = None
@@ -38,14 +35,24 @@ class VoskTranscriptionEngine:
             self.last_error = "Vosk is not installed"
             return
 
-        model_name = LANGUAGE_MODEL_DIRS.get(self.source_language)
-        if model_name is None:
+        model_path, options = resolve_model_path(
+            models_root=self.models_root,
+            language=self.source_language,
+            tier=self.model_tier,
+        )
+        if not options:
             self.last_error = f"No local Vosk model configured for '{self.source_language}'"
             return
 
-        model_path = self.models_root / model_name
-        if not model_path.exists():
-            self.last_error = f"Missing local Vosk model at {model_path}"
+        if model_path is None:
+            installed_tiers = [option.label for option in options if option.installed]
+            if installed_tiers:
+                self.last_error = (
+                    f"Requested {self.model_tier} model is not installed for {self.source_language}. "
+                    f"Available: {', '.join(installed_tiers)}"
+                )
+            else:
+                self.last_error = f"No installed local Vosk models found for {self.source_language}"
             return
 
         model = Model(str(model_path))

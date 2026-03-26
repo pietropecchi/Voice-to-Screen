@@ -53,6 +53,25 @@ class InputDevice:
 
 
 @dataclass(slots=True)
+class ModelOption:
+    language: str
+    tier: str
+    label: str
+    model_dir: str
+    installed: bool
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, object]) -> "ModelOption":
+        return cls(
+            language=str(payload["language"]),
+            tier=str(payload["tier"]),
+            label=str(payload["label"]),
+            model_dir=str(payload["model_dir"]),
+            installed=bool(payload["installed"]),
+        )
+
+
+@dataclass(slots=True)
 class CaptionSegment:
     segment_id: str
     speaker_label: str

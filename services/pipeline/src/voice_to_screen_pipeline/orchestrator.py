@@ -55,6 +55,7 @@ class PipelineOrchestrator:
 
         transcription = VoskTranscriptionEngine(
             source_language=self.config.source_language,
+            model_tier=self.config.model_tier,
             sample_rate=audio_source.active_sample_rate,
             models_root=self._models_root(),
         )

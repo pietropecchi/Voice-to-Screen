@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .models import CaptionSegment, InputDevice, SegmentStatus, SessionConfig
+from .models import CaptionSegment, InputDevice, ModelOption, SegmentStatus, SessionConfig
 from .pipeline_client import PipelineClient
 
 
@@ -29,6 +29,7 @@ class OverlayWindow(QWidget):
         self._config = SessionConfig()
         self._pipeline = PipelineClient(self)
         self._devices: list[InputDevice] = []
+        self._models: list[ModelOption] = []
         self._audio_level = 0.0
         self._always_on_top_timer = QTimer(self)
         self._always_on_top_timer.setInterval(1500)
@@ -38,6 +39,7 @@ class OverlayWindow(QWidget):
         self._build_ui()
         self._bind_events()
         self._load_devices()
+        self._load_models()
 
     def _build_window(self) -> None:
         self.setWindowTitle("Voice-to-Screen")
@@ -89,10 +91,10 @@ class OverlayWindow(QWidget):
         self.language_combo = QComboBox()
         self.language_combo.addItems(["English", "Italian", "Chinese", "Japanese"])
         self.model_combo = QComboBox()
-        self.model_combo.addItems(["Balanced", "Fast", "Accurate"])
+        self.model_combo.setMinimumWidth(160)
         row_one.addWidget(_labeled_widget("Audio device", self.device_combo))
         row_one.addWidget(_labeled_widget("Input", self.language_combo))
-        row_one.addWidget(_labeled_widget("Model", self.model_combo))
+        row_one.addWidget(_labeled_widget("Model size", self.model_combo))
         controls_layout.addLayout(row_one)
 
         row_two = QHBoxLayout()
@@ -158,6 +160,7 @@ class OverlayWindow(QWidget):
         self.gender_toggle.toggled.connect(self._update_config)
         self.device_combo.currentIndexChanged.connect(self._update_config)
         self.language_combo.currentTextChanged.connect(self._update_config)
+        self.language_combo.currentTextChanged.connect(self._load_models)
         self.model_combo.currentTextChanged.connect(self._update_config)
         self.refresh_devices_button.clicked.connect(self._load_devices)
 
@@ -207,7 +210,8 @@ class OverlayWindow(QWidget):
         selected_device = self.device_combo.currentData()
         self._config.input_device_id = str(selected_device) if selected_device is not None else ""
         self._config.source_language = self.language_combo.currentText().lower()
-        self._config.model_tier = self.model_combo.currentText().lower()
+        selected_tier = self.model_combo.currentData()
+        self._config.model_tier = str(selected_tier) if selected_tier is not None else ""
         self._config.compact_mode = self.compact_toggle.isChecked()
         self._config.speaker_labels_enabled = self.speakers_toggle.isChecked()
         self._config.gender_hints_enabled = self.gender_toggle.isChecked()
@@ -257,6 +261,32 @@ class OverlayWindow(QWidget):
         self._update_config()
         if devices:
             self.status_label.setText(f"Ready · {len(devices)} input device(s) detected")
+
+    def _load_models(self) -> None:
+        language = self.language_combo.currentText().lower()
+        try:
+            models = self._pipeline.list_models(language)
+        except Exception as exc:
+            self.status_label.setText(f"Model discovery failed: {exc}")
+            return
+
+        self._models = models
+        installed = [model for model in models if model.installed]
+
+        self.model_combo.blockSignals(True)
+        self.model_combo.clear()
+        for model in installed:
+            self.model_combo.addItem(model.label, model.tier)
+        self.model_combo.blockSignals(False)
+
+        if installed:
+            self._config.model_tier = installed[0].tier
+            self.status_label.setText(
+                f"Ready · {len(self._devices)} input device(s) · {len(installed)} model size(s)"
+            )
+        else:
+            self._config.model_tier = ""
+            self.status_label.setText(f"No installed model sizes found for {language}")
 
     def _render_captions(self, captions: list[CaptionSegment]) -> None:
         while self.feed_layout.count() > 1:

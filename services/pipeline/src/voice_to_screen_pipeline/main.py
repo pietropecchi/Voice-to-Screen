@@ -5,12 +5,16 @@ import sys
 
 from .audio.devices import list_input_devices
 from .contracts import SessionConfig
+from .models import list_model_options
 from .orchestrator import PipelineOrchestrator
 
 
 def main() -> None:
     if len(sys.argv) > 1 and sys.argv[1] == "list-devices":
         _print_devices()
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "list-models":
+        _print_models(sys.argv[2] if len(sys.argv) > 2 else None)
         return
 
     raw_config = sys.argv[1] if len(sys.argv) > 1 else None
@@ -39,6 +43,16 @@ def _parse_config(raw_config: str | None) -> SessionConfig:
 
 def _print_devices() -> None:
     payload = {"devices": [device.to_dict() for device in list_input_devices()]}
+    print(json.dumps(payload))
+
+
+def _print_models(language: str | None) -> None:
+    payload = {
+        "models": [
+            model.to_dict()
+            for model in list_model_options(PipelineOrchestrator._models_root(), language)
+        ]
+    }
     print(json.dumps(payload))
 
 

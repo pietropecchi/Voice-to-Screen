@@ -8,7 +8,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, QProcess, Signal
 
-from .models import CaptionSegment, InputDevice, SessionConfig
+from .models import CaptionSegment, InputDevice, ModelOption, SessionConfig
 
 
 class PipelineClient(QObject):
@@ -68,6 +68,26 @@ class PipelineClient(QObject):
 
         payload = json.loads(result.stdout)
         return [InputDevice.from_dict(item) for item in payload.get("devices", [])]
+
+    def list_models(self, language: str) -> list[ModelOption]:
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(self._pipeline_src_dir())
+        command = [sys.executable, "-m", "voice_to_screen_pipeline.main", "list-models", language]
+        result = subprocess.run(
+            command,
+            cwd=self._repo_root(),
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        if result.returncode != 0:
+            error_message = result.stderr.strip() or "Model discovery failed"
+            raise RuntimeError(error_message)
+
+        payload = json.loads(result.stdout)
+        return [ModelOption.from_dict(item) for item in payload.get("models", [])]
 
     def _consume_stdout(self) -> None:
         while self._process.canReadLine():
