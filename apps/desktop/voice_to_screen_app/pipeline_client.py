@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import sys
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QProcess, Signal
@@ -98,8 +99,14 @@ class PipelineClient(QObject):
 
     def _consume_stderr(self) -> None:
         message = bytes(self._process.readAllStandardError()).decode("utf-8").strip()
-        if message:
-            self.process_error.emit(message)
+        if not message:
+            return
+
+        for line in [line.strip() for line in message.splitlines() if line.strip()]:
+            if line.startswith("LOG (") or line.startswith("WARNING ("):
+                print(line, file=sys.stderr)
+                continue
+            self.process_error.emit(line)
 
     def _handle_finished(self) -> None:
         self.session_stopped.emit()

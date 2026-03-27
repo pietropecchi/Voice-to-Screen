@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QPoint, QTimer, Qt
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QFrame,
     QLabel,
@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .models import CaptionSegment, SegmentStatus
+from .models import CaptionSegment
 from .session_controller import SessionController
 
 
@@ -28,7 +28,6 @@ class OverlayWindow(QWidget):
         self._build_window()
         self._build_ui()
         self._bind()
-        self.status_label.setText(self.controller.status_text)
         self._render_captions(self.controller.captions)
 
     def _build_window(self) -> None:
@@ -67,20 +66,14 @@ class OverlayWindow(QWidget):
         self.scroll_area.setWidget(self.feed_widget)
         layout.addWidget(self.scroll_area, 1)
 
-        footer = QVBoxLayout()
-        self.status_label = QLabel("Overlay ready")
-        self.status_label.setObjectName("overlayStatus")
-        footer.addWidget(self.status_label)
         self.size_grip = QSizeGrip(self.panel)
-        footer.addWidget(self.size_grip, 0, Qt.AlignmentFlag.AlignRight)
-        layout.addLayout(footer)
+        layout.addWidget(self.size_grip, 0, Qt.AlignmentFlag.AlignRight)
 
         root.addWidget(self.panel)
         self.setStyleSheet(_overlay_stylesheet())
 
     def _bind(self) -> None:
         self.controller.captions_changed.connect(self._render_captions)
-        self.controller.status_changed.connect(self.status_label.setText)
         self.controller.config_changed.connect(self._apply_config)
 
     def showEvent(self, event) -> None:  # type: ignore[override]
@@ -133,7 +126,7 @@ class OverlayWindow(QWidget):
         primary.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         layout.addWidget(primary)
 
-        if not config.compact_mode and caption.source_text:
+        if not config.compact_mode and caption.translated_text and caption.source_text:
             source = QLabel(caption.source_text)
             source.setWordWrap(True)
             source.setObjectName("secondaryText")
@@ -143,9 +136,8 @@ class OverlayWindow(QWidget):
             layout.addWidget(source)
 
         if config.speaker_labels_enabled:
-            speaker = QLabel(f"{caption.speaker_label} · {caption.status.value.upper()}")
+            speaker = QLabel(caption.speaker_label)
             speaker.setObjectName("metaText")
-            speaker.setStyleSheet(f"color: {status_color(caption.status).name()};")
             layout.addWidget(speaker)
         return card
 
@@ -155,16 +147,6 @@ class OverlayWindow(QWidget):
 
     def _reassert_on_top(self) -> None:
         self.raise_()
-
-
-def status_color(status: SegmentStatus) -> QColor:
-    if status == SegmentStatus.DRAFT:
-        return QColor("#f0c75e")
-    if status == SegmentStatus.REVISED:
-        return QColor("#ff9757")
-    return QColor("#6be28c")
-
-
 def _overlay_stylesheet() -> str:
     return """
     QWidget {
@@ -187,7 +169,7 @@ def _overlay_stylesheet() -> str:
     #secondaryText {
         color: rgba(245, 247, 251, 0.72);
     }
-    #metaText, #overlayStatus {
+    #metaText {
         color: rgba(245, 247, 251, 0.62);
     }
     """

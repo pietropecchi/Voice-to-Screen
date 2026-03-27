@@ -78,10 +78,6 @@ class ControlWindow(QWidget):
         row_four.addWidget(self.primary_font_slider)
         root.addLayout(row_four)
 
-        self.status_label = QLabel("Idle")
-        self.status_label.setStyleSheet("color: rgba(20,20,20,0.72);")
-        root.addWidget(self.status_label)
-
         meter_row = QHBoxLayout()
         meter_row.addWidget(QLabel("Input level"))
         self.audio_meter = QProgressBar()
@@ -104,7 +100,6 @@ class ControlWindow(QWidget):
         self._sync_from_controller()
         self._update_devices(self.controller.devices)
         self._update_models(self.controller.models)
-        self.status_label.setText(self.controller.status_text)
         self.audio_meter.setValue(int(self.controller.audio_level * 100))
         self._update_running_state(self.controller.is_running)
 
@@ -123,7 +118,6 @@ class ControlWindow(QWidget):
 
         self.controller.devices_changed.connect(self._update_devices)
         self.controller.models_changed.connect(self._update_models)
-        self.controller.status_changed.connect(self.status_label.setText)
         self.controller.audio_level_changed.connect(lambda level: self.audio_meter.setValue(int(level * 100)))
         self.controller.running_changed.connect(self._update_running_state)
         self.controller.config_changed.connect(lambda _: self._sync_from_controller())

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 from PySide6.QtCore import QObject, Signal
 
 from .models import CaptionSegment, InputDevice, ModelOption, SessionConfig
@@ -42,6 +44,10 @@ class SessionController(QObject):
             return
 
         self.pipeline.start_session(self.config)
+
+    def shutdown(self) -> None:
+        if self.pipeline.is_running():
+            self.pipeline.stop_session()
 
     def load_devices(self) -> None:
         try:
@@ -128,8 +134,9 @@ class SessionController(QObject):
         self.running_changed.emit(False)
 
     def _handle_captions_updated(self, captions: list[CaptionSegment]) -> None:
-        self.captions = captions
-        self.captions_changed.emit(captions)
+        finalized = [caption for caption in captions if caption.status == "final"]
+        self.captions = finalized
+        self.captions_changed.emit(finalized)
 
     def _handle_audio_level(self, level: float) -> None:
         self.audio_level = level
@@ -142,4 +149,5 @@ class SessionController(QObject):
 
     def _set_status(self, text: str) -> None:
         self.status_text = text
+        print(text, file=sys.stderr)
         self.status_changed.emit(text)

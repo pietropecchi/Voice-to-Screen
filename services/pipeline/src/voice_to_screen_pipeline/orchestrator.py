@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
+import sys
 
 from .audio.devices import list_input_devices
 from .audio.source import AudioSource, AudioSourceConfig
 from .contracts import CaptionSegment, SegmentStatus, SessionConfig
 from .events import PipelineEvent
+from .translation.argos_engine import ArgosTranslationEngine
 from .transcription.vosk_engine import VoskTranscriptionEngine
 
 
@@ -69,6 +71,14 @@ class PipelineOrchestrator:
             yield PipelineEvent(event_type="session_stopped")
             return
 
+        translation = ArgosTranslationEngine(
+            source_language=self.config.source_language,
+            target_language=self.config.target_language,
+        )
+        translation.start()
+        if translation.last_error:
+            print(translation.last_error, file=sys.stderr)
+
         for packet in audio_source.iter_packets():
             yield PipelineEvent(
                 event_type="audio_level",
@@ -81,13 +91,17 @@ class PipelineOrchestrator:
             if update is None:
                 continue
 
+            translated_text = ""
+            if update.is_final:
+                translated_text = translation.translate_text(update.text)
+
             yield PipelineEvent(
                 event_type="caption_segment",
                 payload=CaptionSegment(
                     segment_id=update.segment_id,
                     speaker_label="Speaker 1",
                     source_text=update.text,
-                    translated_text="",
+                    translated_text=translated_text,
                     status=SegmentStatus.FINAL if update.is_final else SegmentStatus.DRAFT,
                 ).to_dict(),
             )

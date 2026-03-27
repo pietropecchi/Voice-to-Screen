@@ -16,6 +16,7 @@ def main() -> int:
     control_window = ControlWindow(controller)
     overlay_window = OverlayWindow(controller)
     controller.initialize()
+    app.aboutToQuit.connect(controller.shutdown)
 
     control_window.show()
     overlay_window.show()
