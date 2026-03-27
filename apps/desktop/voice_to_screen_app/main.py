@@ -4,13 +4,21 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
-from .window import OverlayWindow
+from .control_window import ControlWindow
+from .overlay_window import OverlayWindow
+from .session_controller import SessionController
 
 
 def main() -> int:
     app = QApplication(sys.argv)
-    window = OverlayWindow()
-    window.show()
+    controller = SessionController()
+
+    control_window = ControlWindow(controller)
+    overlay_window = OverlayWindow(controller)
+    controller.initialize()
+
+    control_window.show()
+    overlay_window.show()
     return app.exec()
 
 
